@@ -25,6 +25,7 @@ export const usePersistentProfile = () => {
     catch { setSaveError(true); }
   }, [profile]);
   useEffect(() => {
+    if (import.meta.env.VITE_SERVER_URL === null) return;
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
@@ -33,7 +34,7 @@ export const usePersistentProfile = () => {
           token = Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, '0')).join('');
           localStorage.setItem('uno-arena:device-secret', token);
         }
-        const response = await fetch((import.meta.env.VITE_SERVER_URL || '') + '/api/profile', {
+        const response = await fetch(import.meta.env.VITE_SERVER_URL + '/api/profile', {
           method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
           body: JSON.stringify(profile), signal: controller.signal
         });

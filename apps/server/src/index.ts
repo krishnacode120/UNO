@@ -16,6 +16,7 @@ import { registerSocketHandlers } from './socket.js';
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', config.trustProxyHops);
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: config.clientOrigin }, maxHttpBufferSize: 16_384 });
 const useMongo = await connectDatabase();

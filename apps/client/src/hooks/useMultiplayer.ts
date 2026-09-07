@@ -4,6 +4,8 @@ import type { AiDifficulty, ClientRoomView, GameAction, GameSettings } from '@un
 import { RECONNECT_STORAGE_KEY } from '../lib/defaults.js';
 
 type Ack = { ok: boolean; error?: string; roomCode?: string; playerId?: string; reconnectToken?: string };
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const unavailableMessage = 'Multiplayer is unavailable on this deployment. Solo play is ready.';
 const readSession = (): { roomCode: string; reconnectToken: string } | null => {
   try { return JSON.parse(sessionStorage.getItem(RECONNECT_STORAGE_KEY) ?? 'null'); } catch { return null; }
 };
@@ -17,6 +19,7 @@ export const useMultiplayer = (name: string, settings: GameSettings) => {
   const inFlight = useRef(false);
 
   const request = useCallback(async (event: string, payload: object): Promise<Ack> => {
+    if (serverUrl === null) return { ok: false, error: unavailableMessage };
     const socket = socketRef.current;
     if (!socket?.connected) return { ok: false, error: 'Connection lost. Reconnecting to the table...' };
     return new Promise((resolve) => {
@@ -27,7 +30,8 @@ export const useMultiplayer = (name: string, settings: GameSettings) => {
   }, []);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_SERVER_URL || undefined, { reconnection: true });
+    if (serverUrl === null) return;
+    const socket = io(serverUrl || undefined, { reconnection: true });
     socketRef.current = socket;
     socket.on('connect', async () => {
       const session = readSession();
@@ -68,7 +72,7 @@ export const useMultiplayer = (name: string, settings: GameSettings) => {
   }, [request]);
 
   return {
-    room, playerId, connected, busy, error,
+    room, playerId, connected, busy, error: serverUrl === null ? unavailableMessage : error,
     isHost: Boolean(room && playerId === room.hostId),
     clearError: () => setError(null),
     createRoom: () => run('room:create', { name: name.trim() || 'Player', settings }),

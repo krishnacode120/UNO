@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -10,6 +13,8 @@
   "scripts": {
     "dev": "concurrently -k -n SERVER,CLIENT -c cyan,magenta \"npm run dev -w @uno/server\" \"npm run dev -w @uno/client\"",
     "build": "npm run build -w @uno/shared && npm run build -w @uno/server && npm run build -w @uno/client",
+    "build:vercel": "npm run build -w @uno/shared && npm run build:vercel -w @uno/client",
+    "build:server": "npm run build -w @uno/shared && npm run build -w @uno/server",
     "lint": "eslint .",
     "test": "vitest run --config vitest.config.ts",
     "test:e2e": "playwright test",
@@ -23,7 +28,6 @@
     "@vitejs/plugin-react": "^4.5.2",
     "concurrently": "^9.1.2",
     "eslint": "^9.29.0",
-    "tsup": "^8.5.0",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.34.0",
     "vite": "^5.4.19",

@@ -1,0 +1,19 @@
+# Optional multiplayer backend. Vercel serves the frontend separately.
+services:
+  - type: web
+    name: uno-arena-server
+    runtime: node
+    plan: free
+    numInstances: 1
+    buildCommand: npm ci --include=dev && npm run build:server
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: TRUST_PROXY_HOPS
+        value: "1"
+      - key: CLIENT_ORIGIN
+        sync: false

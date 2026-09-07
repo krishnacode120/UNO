@@ -4,7 +4,7 @@ An unofficial UNO-inspired card game for desktop and mobile browsers. React, Typ
 
 ## Run Locally
 
-Requires Node.js 22 or newer and npm.
+Requires Node.js 22 and npm.
 
 ```sh
 npm ci
@@ -33,6 +33,23 @@ Solo games work offline after the production app shell has been installed. Multi
 
 ## Build and Deploy
 
+### Vercel Frontend
+
+Deploy from the **repository root**, not `apps/server`. In Vercel Settings > Build and Deployment, clear **Root Directory** and select the **Vite** framework preset. The root `vercel.json` sets these commands:
+
+| Setting | Value |
+| --- | --- |
+| Install Command | `npm ci --include=dev` |
+| Build Command | `npm run build:vercel` |
+| Output Directory | `apps/client/dist` |
+| Node.js Version | `22.x` |
+
+Redeploy the latest commit without the previous build cache. Without a backend, the site supports solo games, local settings/statistics, and offline installation. Multiplayer is explicitly unavailable until a server URL is configured.
+
+For room-code multiplayer, use the included `render.yaml` to deploy the Node server, then set **`VITE_SERVER_URL`** in Vercel to its HTTPS origin and redeploy. The full [Vercel and multiplayer deployment guide](docs/DEPLOYMENT.md) covers this setup and the `tsup: command not found` error.
+
+### Single-Server Hosting
+
 ```sh
 npm run build
 npm start
@@ -45,7 +62,8 @@ Server configuration in `apps/server/.env` (see `.env.example`):
 - `PORT`: default 4000.
 - `CLIENT_ORIGIN`: exact public origin for cross-origin clients; same-origin deployment is recommended.
 - `MONGODB_URI`: enables persistent guest profiles, settings, statistics and history. Without it, backend saves are in memory.
-- `VITE_SERVER_URL`: optional client build variable for a separate backend origin. Usually omit it.
+- `TRUST_PROXY_HOPS`: exact number of trusted reverse proxies; default 0 for direct access, 1 in the Render template. Do not enable blindly on an untrusted network path.
+- `VITE_SERVER_URL`: client build variable for a separate backend origin. Set in Vercel's environment settings or `apps/client/.env.local`, not the server's `.env`. Omit for same-origin hosting.
 
 Never expose MongoDB directly to browsers. Guest profile saves are protected by a random device secret, not a public profile ID. Browser storage retains local data; clearing it removes that device identity. Statistics are personal records, not trusted leaderboard scores.
 
