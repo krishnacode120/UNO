@@ -1,0 +1,32 @@
+{
+  "name": "uno-arena",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,CLIENT -c cyan,magenta \"npm run dev -w @uno/server\" \"npm run dev -w @uno/client\"",
+    "build": "npm run build -w @uno/shared && npm run build -w @uno/server && npm run build -w @uno/client",
+    "lint": "eslint .",
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
+    "start": "npm run start -w @uno/server",
+    "typecheck": "npm run typecheck -w @uno/shared && npm run typecheck -w @uno/server && npm run typecheck -w @uno/client"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.15.31",
+    "@vitejs/plugin-react": "^4.5.2",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.29.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.0",
+    "vite": "^5.4.19",
+    "vitest": "^3.2.3"
+  }
+}

@@ -1,0 +1,15 @@
+node_modules
+dist
+.env
+.env.local
+.DS_Store
+coverage
+*.log
+apps/client/.vite
+apps/server/data
+test-results
+playwright-report
+artifacts
+.logs
+uno-home.png
+uno-home-settled.png

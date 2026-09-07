@@ -1,0 +1,41 @@
+import http from 'node:http';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import cors from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import { rateLimit } from 'express-rate-limit';
+import { Server } from 'socket.io';
+import mongoose from 'mongoose';
+import { config } from './config.js';
+import { connectDatabase } from './database.js';
+import { createProfileRepository } from './repositories.js';
+import { createApiRouter } from './routes.js';
+import { RoomManager } from './roomManager.js';
+import { registerSocketHandlers } from './socket.js';
+
+const app = express();
+app.disable('x-powered-by');
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: config.clientOrigin }, maxHttpBufferSize: 16_384 });
+const useMongo = await connectDatabase();
+const profiles = createProfileRepository(useMongo);
+const rooms = new RoomManager();
+app.use(helmet({ contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false }));
+app.use(express.json({ limit: '128kb' }));
+app.use('/api', cors({ origin: config.clientOrigin }), rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: 'draft-7', legacyHeaders: false }), createApiRouter(profiles));
+const staticPath = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../client/dist');
+app.use(express.static(staticPath, { index: 'index.html' }));
+app.get('/', (_req, res) => res.sendFile(resolve(staticPath, 'index.html')));
+app.use((error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  res.status(400).json({ ok: false, error: error instanceof Error ? error.message : 'Invalid request.' });
+});
+const cleanup = registerSocketHandlers(io, rooms);
+server.listen(config.port, '0.0.0.0', () => console.info('[server] UNO Arena at http://localhost:' + config.port));
+const shutdown = () => {
+  cleanup();
+  io.close(() => { server.close(); void mongoose.disconnect().then(() => process.exit(0)); });
+  setTimeout(() => process.exit(1), 5000).unref();
+};
+process.once('SIGINT', shutdown);
+process.once('SIGTERM', shutdown);

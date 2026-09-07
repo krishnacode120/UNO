@@ -1,0 +1,85 @@
+import { test, expect } from '@playwright/test';
+const noOverflow = async (page: import('@playwright/test').Page) => {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+};
+test('desktop home and solo game render, draw, and bot turns run', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'UNO Arena.' })).toBeVisible();
+  await page.screenshot({ path: 'artifacts/home-desktop.png', fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: 'Deal me in' }).click();
+  await expect(page.locator('.hand-card')).toHaveCount(7);
+  await expect(page.locator('.opponent-seat')).toHaveCount(4);
+  await expect.poll(() => page.locator('.hand-card').evaluateAll((cards) => Math.max(...cards.map((card) => card.getBoundingClientRect().top)) - Math.min(...cards.map((card) => card.getBoundingClientRect().top)))).toBeLessThan(1);
+  await page.screenshot({ path: 'artifacts/game-desktop.png', fullPage: true, animations: 'disabled' });
+  await page.getByRole('button', { name: 'Draw card', exact: true }).click();
+  if (await page.getByRole('button', { name: 'Pass', exact: true }).isVisible()) await page.getByRole('button', { name: 'Pass', exact: true }).click();
+  await expect.poll(() => page.locator('.activity-panel li').count()).toBeGreaterThan(3);
+  await noOverflow(page);
+  expect(errors).toEqual([]);
+});
+test('two independent players join a code, play, and reconnect without losing a hand', async ({ browser }) => {
+  const a = await browser.newContext(); const b = await browser.newContext();
+  const host = await a.newPage(); const guest = await b.newPage();
+  await host.goto('/'); await host.getByRole('button', { name: /Host a table/ }).click();
+  await expect(host.locator('.room-code strong')).toBeVisible();
+  const code = (await host.locator('.room-code strong').textContent())!;
+  await guest.goto('/?room=' + code);
+  await expect(guest.locator('#room-code')).toHaveValue(code);
+  await expect(guest.getByRole('button', { name: 'Join table' })).toBeEnabled();
+  await guest.getByRole('button', { name: 'Join table' }).click();
+  await expect(host.locator('.lobby-list article')).toHaveCount(2);
+  await expect(guest.locator('.lobby-list article')).toHaveCount(2);
+  await expect(guest.getByRole('button', { name: 'Start the game' })).toHaveCount(0);
+  await host.getByRole('button', { name: 'Add bot', exact: true }).click();
+  await expect(host.locator('.lobby-list article')).toHaveCount(3);
+  await host.screenshot({ path: 'artifacts/lobby-desktop.png', fullPage: true, animations: 'disabled' });
+  await host.getByRole('button', { name: 'Start the game' }).click();
+  await expect(host.locator('.hand-card')).toHaveCount(7);
+  await expect(guest.locator('.hand-card')).toHaveCount(7);
+  const hand = await guest.locator('.hand-card button').evaluateAll((cards) => cards.map((card) => card.getAttribute('aria-label')));
+  await guest.reload();
+  await expect(guest.locator('.hand-card')).toHaveCount(7);
+  expect(await guest.locator('.hand-card button').evaluateAll((cards) => cards.map((card) => card.getAttribute('aria-label')))).toEqual(hand);
+  await host.getByRole('button', { name: 'Draw card', exact: true }).click();
+  await expect(host.locator('.hand-card')).toHaveCount(8);
+  await expect(guest.locator('.opponent-track .player-meta')).toContainText(['8 cards', '7 cards']);
+  await a.close(); await b.close();
+});
+test('settings persist and daylight theme stays usable', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByLabel('Player name').fill('Alex');
+  await page.getByRole('button', { name: 'Daylight', exact: true }).click();
+  await page.getByRole('button', { name: 'hard', exact: true }).click();
+  await page.getByLabel('Reduced motion').check();
+  await page.reload();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await expect(page.getByLabel('Player name')).toHaveValue('Alex');
+  await expect(page.getByRole('button', { name: 'hard', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByLabel('Reduced motion')).toBeChecked();
+  await page.screenshot({ path: 'artifacts/settings-daylight.png', fullPage: true, animations: 'disabled' });
+  await noOverflow(page);
+});
+for (const size of [{ width: 390, height: 844 }, { width: 360, height: 740 }, { width: 320, height: 640 }, { width: 844, height: 390 }]) {
+  test('mobile layout and controls ' + size.width + 'x' + size.height, async ({ browser }) => {
+    const context = await browser.newContext({ viewport: size, isMobile: true, hasTouch: true, deviceScaleFactor: 1 });
+    const page = await context.newPage();
+    const errors: string[] = []; page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/');
+    await noOverflow(page);
+    await page.screenshot({ path: 'artifacts/home-' + size.width + '.png', fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'Deal me in' }).click();
+    await expect(page.locator('.hand-card')).toHaveCount(7);
+    await expect.poll(() => page.locator('.hand-card').evaluateAll((cards) => Math.max(...cards.map((card) => card.getBoundingClientRect().top)) - Math.min(...cards.map((card) => card.getBoundingClientRect().top)))).toBeLessThan(1);
+    await noOverflow(page);
+    await page.screenshot({ path: 'artifacts/game-' + size.width + '.png', fullPage: true, animations: 'disabled' });
+    await page.getByRole('button', { name: 'Leave table', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('button', { name: 'Keep playing' }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    expect(errors).toEqual([]);
+    await context.close();
+  });
+}
