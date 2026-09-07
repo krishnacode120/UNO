@@ -4,7 +4,7 @@ An unofficial UNO-inspired card game for desktop and mobile browsers. React, Typ
 
 ## Run Locally
 
-Requires Node.js 22 and npm.
+Requires Node.js 22 or 24 and npm.
 
 ```sh
 npm ci
@@ -35,14 +35,16 @@ Solo games work offline after the production app shell has been installed. Multi
 
 ### Vercel Frontend
 
-Deploy from the **repository root**, not `apps/server`. In Vercel Settings > Build and Deployment, clear **Root Directory** and select the **Vite** framework preset. The root `vercel.json` sets these commands:
+The **repository root** is the recommended Vercel Root Directory. Select the **Vite** framework preset. The root `vercel.json` sets these commands:
 
 | Setting | Value |
 | --- | --- |
-| Install Command | `npm ci --include=dev` |
+| Install Command | `npm ci --include=dev --workspaces --include-workspace-root` |
 | Build Command | `npm run build:vercel` |
 | Output Directory | `apps/client/dist` |
-| Node.js Version | `22.x` |
+| Node.js Version | `22.x` or `24.x` |
+
+Existing projects with Root Directory **`apps/server`** are also supported. Keep **Include source files outside of the Root Directory in the Build Step** enabled. The `apps/server/vercel.json` installs from the repository root, delegates `build:vercel` to the frontend, and publishes the copied static output from `vercel-dist`. It does not deploy the Socket.IO server as a function. See the [deployment guide](docs/DEPLOYMENT.md) for the settings for each root.
 
 Redeploy the latest commit without the previous build cache. Without a backend, the site supports solo games, local settings/statistics, and offline installation. Multiplayer is explicitly unavailable until a server URL is configured.
 

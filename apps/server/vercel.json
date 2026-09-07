@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "installCommand": "npm ci --include=dev --workspaces --include-workspace-root",
+  "installCommand": "node ../../scripts/vercel-workspace.mjs install",
   "buildCommand": "npm run build:vercel",
-  "outputDirectory": "apps/client/dist",
+  "outputDirectory": "vercel-dist",
   "headers": [
     {
       "source": "/sw.js",

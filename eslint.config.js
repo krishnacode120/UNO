@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', 'coverage/**', '**/vitest.config.ts', 'playwright.config.ts', 'tests/**', 'scripts/**', 'apps/client/public/sw.js', 'artifacts/**', 'test-results/**', 'playwright-report/**']
+    ignores: ['**/dist/**', '**/vercel-dist/**', '**/node_modules/**', 'coverage/**', '**/vitest.config.ts', 'playwright.config.ts', 'tests/**', 'scripts/**', 'apps/client/public/sw.js', 'artifacts/**', 'test-results/**', 'playwright-report/**']
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

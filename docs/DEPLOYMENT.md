@@ -2,16 +2,29 @@
 
 ## Fix the Failed Build
 
-The reported log builds `@uno/server` in `apps/server`, while the original `tsup` dependency was declared only at the repository root. A workspace-filtered or production-only install can omit it. The server now declares its own build tool, and the Vercel configuration explicitly installs development dependencies and builds only the shared engine and frontend.
+The latest log runs `npm run build:vercel` in `apps/server`. That script previously existed only in the repository root and the frontend. This is the fatal error; the Node engine, audit, and install-script messages are separate warnings. The server workspace now includes a compatibility build entry point, and both Node 22 and 24 are supported.
 
-In your existing Vercel project, open **Settings > Build and Deployment**:
+### Existing Project With Root Directory `apps/server`
 
-1. Clear **Root Directory** to use the repository root. Do not select `apps/server` or `apps/client`. A root `vercel.json` cannot correct a dashboard setting that selects a different directory.
-2. Select **Vite** as the Framework Preset and **22.x** as the Node.js version.
-3. Remove old build/install/output overrides. The checked-in `vercel.json` supplies `npm ci --include=dev`, `npm run build:vercel`, and `apps/client/dist` respectively.
-4. Deploy the newest `main` commit. When retrying, disable the previous build cache.
+Keep your current root. In **Settings > Build and Deployment**, enable **Include source files outside of the Root Directory in the Build Step**. This is necessary because the client and shared engine are sibling workspaces. The config at `apps/server/vercel.json` supplies:
 
-The `esbuild` install-script warning is separate from the reported missing `tsup` executable. Do not work around the error with a global install or `npx tsup` that downloads an unpinned tool during deployment.
+| Setting | Value |
+| --- | --- |
+| Framework Preset | `Vite` |
+| Install Command | `node ../../scripts/vercel-workspace.mjs install` |
+| Build Command | `npm run build:vercel` |
+| Output Directory | `vercel-dist` |
+| Node.js Version | `22.x` or `24.x` |
+
+The installer runs `npm ci --include=dev --workspaces --include-workspace-root` from the repository root. The build runs the root frontend pipeline and copies its complete output, including the offline service worker and icons, to `apps/server/vercel-dist`. No build tools are downloaded dynamically, and no backend source is published in that static directory.
+
+Deploy the newest `main` commit without the previous build cache. Do not redeploy the old `5b5924c` commit: it does not contain this compatibility entry point.
+
+### New Project With the Repository Root
+
+Leave **Root Directory** blank and select **Vite**. The top-level `vercel.json` supplies `npm ci --include=dev --workspaces --include-workspace-root`, `npm run build:vercel`, and `apps/client/dist` as the install command, build command, and output directory. Both deployment roots build the same frontend. Do not mix the output directories between them.
+
+The earlier `tsup` dependency ownership fix remains in place for the persistent Node backend. Do not work around deployment errors with a global install, `npx tsup`, or an unreviewed `npm audit fix --force`. Dependency audit findings need separate review; this workspace fix does not claim to resolve them.
 
 Without `VITE_SERVER_URL`, the Vercel build is intentionally solo-only. Local settings, statistics, AI matches, and offline play still work. It does not pretend a static deployment can create shared rooms or save profiles to a server.
 
@@ -65,5 +78,15 @@ npm run build:vercel
 npm run build:server
 node scripts/test-vercel.mjs
 ```
+
+To reproduce the server-root deployment, run the following from `apps/server` (the install step replaces the repository's installed dependencies):
+
+```sh
+node ../../scripts/vercel-workspace.mjs install
+npm run build:vercel
+node --test ../../scripts/vercel-workspace.test.mjs
+```
+
+CI builds through this entry point on both Node 22 and Node 24, verifies that the published output matches the frontend byte-for-byte, and then checks the ordinary all-in-one build.
 
 The deployment smoke test builds and serves a static frontend on a separate origin from the real Node backend. It checks solo-only hosting, offline reload, cross-origin profile saves, room-code joins, synchronized moves, and private-hand reconnects. It uses installed Google Chrome through Playwright and cleans up its own servers. It does not create a live Vercel or Render deployment.

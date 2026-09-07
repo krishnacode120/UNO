@@ -9,6 +9,7 @@ coverage
 *.log
 apps/client/.vite
 apps/server/data
+apps/server/vercel-dist
 test-results
 playwright-report
 artifacts
